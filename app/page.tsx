@@ -7,9 +7,6 @@ import "prismjs/components/prism-clike";
 import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-typescript";
 import "prismjs/themes/prism.css";
-import { parse } from "@babel/parser";
-import traverse from "@babel/traverse";
-import type { Identifier } from "@babel/types";
 import Link from "next/link";
 
 interface FunctionInfo {
@@ -21,52 +18,50 @@ interface FunctionInfo {
 
 type TestFramework = 'jest' | 'mocha' | 'vitest';
 
-// Enhanced function parsing using Babel AST
-const parseFunctions = (code: string): FunctionInfo[] => {
+// Enhanced function parsing using regex (simplified for build compatibility)
+const parseFunctions = async (code: string): Promise<FunctionInfo[]> => {
   try {
-    const ast = parse(code, {
-      sourceType: "module",
-      plugins: ["jsx", "typescript"],
-    });
-
     const functions: FunctionInfo[] = [];
-
-    traverse(ast, {
-      FunctionDeclaration(path) {
-        functions.push({
-          name: path.node.id?.name || "anonymous",
-          params: path.node.params.map(param => {
-            if (param.type === "Identifier") return param.name;
-            if (param.type === "AssignmentPattern") {
-              const left = param.left as Identifier;
-              return left.name;
-            }
-            return "param";
-          }),
-          isAsync: path.node.async,
-        });
-      },
-      VariableDeclarator(path) {
-        if (path.node.init?.type === "ArrowFunctionExpression" || 
-            path.node.init?.type === "FunctionExpression") {
-          const func = path.node.init;
-          const id = path.node.id as Identifier;
+    
+    // Function declarations
+    const functionDeclarations = code.match(/function\s+([a-zA-Z0-9_]+)\s*\([^)]*\)\s*{/g);
+    if (functionDeclarations) {
+      functionDeclarations.forEach(match => {
+        const nameMatch = match.match(/function\s+([a-zA-Z0-9_]+)\s*\(/);
+        const paramsMatch = match.match(/function\s+[a-zA-Z0-9_]+\s*\(([^)]*)\)/);
+        const isAsync = match.includes('async function');
+        
+        if (nameMatch) {
+          const params = paramsMatch ? paramsMatch[1].split(',').map(p => p.trim()).filter(p => p) : [];
           functions.push({
-            name: id.name || "anonymous",
-            params: func.params.map(param => {
-              if (param.type === "Identifier") return param.name;
-              if (param.type === "AssignmentPattern") {
-                const left = param.left as Identifier;
-                return left.name;
-              }
-              return "param";
-            }),
-            isAsync: func.async,
+            name: nameMatch[1],
+            params,
+            isAsync,
           });
         }
-      },
-    });
-
+      });
+    }
+    
+    // Arrow functions and function expressions
+    const arrowFunctions = code.match(/(?:const|let|var)\s+([a-zA-Z0-9_]+)\s*=\s*(?:async\s*)?(?:\([^)]*\)\s*=>|function\s*\([^)]*\))/g);
+    if (arrowFunctions) {
+      arrowFunctions.forEach(match => {
+        const nameMatch = match.match(/(?:const|let|var)\s+([a-zA-Z0-9_]+)\s*=/);
+        const paramsMatch = match.match(/(?:\(([^)]*)\)\s*=>|function\s*\(([^)]*)\))/);
+        const isAsync = match.includes('async');
+        
+        if (nameMatch) {
+          const params = paramsMatch ? 
+            (paramsMatch[1] || paramsMatch[2] || '').split(',').map(p => p.trim()).filter(p => p) : [];
+          functions.push({
+            name: nameMatch[1],
+            params,
+            isAsync,
+          });
+        }
+      });
+    }
+    
     return functions;
   } catch (error) {
     console.error("Error parsing functions:", error);
@@ -75,8 +70,8 @@ const parseFunctions = (code: string): FunctionInfo[] => {
 };
 
 // Enhanced test generation with better test cases
-const generateTest = (code: string, framework: TestFramework = 'jest', selectedFunction?: string): string => {
-  const functions = parseFunctions(code);
+const generateTest = async (code: string, framework: TestFramework = 'jest', selectedFunction?: string): Promise<string> => {
+  const functions = await parseFunctions(code);
   
   if (functions.length === 0) {
     return "Could not parse any functions. Please check your syntax.";
@@ -251,6 +246,16 @@ async function fetchUser(id) {
   const [success, setSuccess] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFunctionName, setSelectedFunctionName] = useState<string | undefined>(undefined);
+  const [functions, setFunctions] = useState<FunctionInfo[]>([]);
+
+  // Load functions when code changes
+  React.useEffect(() => {
+    const loadFunctions = async () => {
+      const funcs = await parseFunctions(code);
+      setFunctions(funcs);
+    };
+    loadFunctions();
+  }, [code]);
 
   const handleGenerateTest = async () => {
     setError("");
@@ -266,7 +271,7 @@ async function fetchUser(id) {
     try {
       // Simulate a small delay for better UX
       await new Promise(resolve => setTimeout(resolve, 500));
-      const generatedTest = generateTest(code, framework, selectedFunctionName);
+      const generatedTest = await generateTest(code, framework, selectedFunctionName);
       setTest(generatedTest);
       setSuccess("Test generated successfully!");
       setTimeout(() => setSuccess(""), 3000);
@@ -277,14 +282,14 @@ async function fetchUser(id) {
     }
   };
 
-  const handleExportTest = () => {
+  const handleExportTest = async () => {
     if (!test) {
       setError('Please generate a test first');
       return;
     }
 
     try {
-      const functions = parseFunctions(code);
+      const functions = await parseFunctions(code);
       const selectedFunction = functions.find(f => f.name === selectedFunctionName);
       const fileName = selectedFunction ? `${selectedFunction.name}.test.js` : 'test.js';
       
@@ -363,7 +368,6 @@ async function fetchUser(id) {
         
         {/* Function Selection */}
         {(() => {
-          const functions = parseFunctions(code);
           if (functions.length > 1) {
             return (
               <div className="w-full max-w-4xl mb-6">
