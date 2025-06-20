@@ -10,6 +10,7 @@ import "prismjs/themes/prism.css";
 import { parse } from "@babel/parser";
 import traverse from "@babel/traverse";
 import type { Identifier } from "@babel/types";
+import Link from "next/link";
 
 interface FunctionInfo {
   name: string;
@@ -321,132 +322,153 @@ async function fetchUser(id) {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center p-24">
-      <h1 className="text-4xl font-bold mb-8">Unit Test Generator</h1>
-      
-      {/* Test Framework Selection */}
-      <div className="w-full max-w-4xl mb-6">
-        <div className="flex items-center gap-4">
-          <label className="text-lg font-semibold">Test Framework:</label>
-          <select 
-            value={framework} 
-            onChange={(e) => setFramework(e.target.value as TestFramework)}
-            className="px-4 py-2 border rounded-md bg-white"
-          >
-            <option value="jest">Jest</option>
-            <option value="mocha">Mocha + Chai</option>
-            <option value="vitest">Vitest</option>
-          </select>
-        </div>
-      </div>
-      
-      {/* Function Selection */}
-      {(() => {
-        const functions = parseFunctions(code);
-        if (functions.length > 1) {
-          return (
-            <div className="w-full max-w-4xl mb-6">
-              <div className="flex items-center gap-4">
-                <label className="text-lg font-semibold">Select Function:</label>
-                <select 
-                  value={selectedFunctionName || ''} 
-                  onChange={(e) => setSelectedFunctionName(e.target.value || undefined)}
-                  className="px-4 py-2 border rounded-md bg-white"
-                >
-                  <option value="">Auto-select first function</option>
-                  {functions.map(func => (
-                    <option key={func.name} value={func.name}>
-                      {func.name} ({func.params.length} params{func.isAsync ? ', async' : ''})
-                    </option>
-                  ))}
-                </select>
-              </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div className="flex items-center">
+              <h1 className="text-2xl font-bold text-gray-900">Unit Test Generator</h1>
             </div>
-          );
-        }
-        return null;
-      })()}
-      
-      {/* Error Display */}
-      {error && (
-        <div className="w-full max-w-4xl mb-4">
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-            {error}
+            <nav className="flex space-x-8">
+              <Link href="/" className="text-blue-600 font-medium">
+                Home
+              </Link>
+              <Link href="/documentation" className="text-gray-500 hover:text-gray-900 transition-colors">
+                Documentation
+              </Link>
+            </nav>
           </div>
         </div>
-      )}
-      
-      {/* Success Display */}
-      {success && (
-        <div className="w-full max-w-4xl mb-4">
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-            {success}
-          </div>
-        </div>
-      )}
-      
-      <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div>
-          <h2 className="text-2xl font-semibold mb-4">Your Code</h2>
-          <div className="border rounded-md p-4 bg-gray-50 h-96 overflow-auto">
-            <Editor
-              value={code}
-              onValueChange={(code) => setCode(code)}
-              highlight={(code) => highlight(code, languages.js)}
-              padding={10}
-              style={{
-                fontFamily: '"Fira code", "Fira Mono", monospace',
-                fontSize: 12,
-              }}
-            />
-          </div>
-          <button
-            onClick={handleGenerateTest}
-            disabled={isLoading}
-            className={`mt-4 w-full font-bold py-2 px-4 rounded ${
-              isLoading 
-                ? 'bg-gray-400 cursor-not-allowed' 
-                : 'bg-blue-500 hover:bg-blue-700'
-            } text-white`}
-          >
-            {isLoading ? 'Generating...' : 'Generate Test'}
-          </button>
-          {test && (
-            <button
-              onClick={handleExportTest}
-              className="mt-2 w-full bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+      </header>
+
+      <main className="flex min-h-screen flex-col items-center p-24">
+        <h1 className="text-4xl font-bold mb-8">Unit Test Generator</h1>
+        
+        {/* Test Framework Selection */}
+        <div className="w-full max-w-4xl mb-6">
+          <div className="flex items-center gap-4">
+            <label className="text-lg font-semibold">Test Framework:</label>
+            <select 
+              value={framework} 
+              onChange={(e) => setFramework(e.target.value as TestFramework)}
+              className="px-4 py-2 border rounded-md bg-white"
             >
-              Export Test File
-            </button>
-          )}
-          {test && (
-            <button
-              onClick={handleCopyToClipboard}
-              className="mt-2 w-full bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
-            >
-              Copy to Clipboard
-            </button>
-          )}
-        </div>
-        <div>
-          <h2 className="text-2xl font-semibold mb-4">Generated Test ({framework})</h2>
-          <div className="border rounded-md p-4 bg-gray-800 text-white h-96 overflow-auto">
-            <Editor
-              value={test}
-              onValueChange={() => {}} // Read-only
-              highlight={(code) => highlight(code, languages.js)}
-              padding={10}
-              style={{
-                fontFamily: '"Fira code", "Fira Mono", monospace',
-                fontSize: 12,
-                backgroundColor: 'transparent',
-                color: 'white',
-              }}
-              readOnly
-            />
+              <option value="jest">Jest</option>
+              <option value="mocha">Mocha + Chai</option>
+              <option value="vitest">Vitest</option>
+            </select>
           </div>
         </div>
-      </div>
-    </main>
+        
+        {/* Function Selection */}
+        {(() => {
+          const functions = parseFunctions(code);
+          if (functions.length > 1) {
+            return (
+              <div className="w-full max-w-4xl mb-6">
+                <div className="flex items-center gap-4">
+                  <label className="text-lg font-semibold">Select Function:</label>
+                  <select 
+                    value={selectedFunctionName || ''} 
+                    onChange={(e) => setSelectedFunctionName(e.target.value || undefined)}
+                    className="px-4 py-2 border rounded-md bg-white"
+                  >
+                    <option value="">Auto-select first function</option>
+                    {functions.map(func => (
+                      <option key={func.name} value={func.name}>
+                        {func.name} ({func.params.length} params{func.isAsync ? ', async' : ''})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            );
+          }
+          return null;
+        })()}
+        
+        {/* Error Display */}
+        {error && (
+          <div className="w-full max-w-4xl mb-4">
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+              {error}
+            </div>
+          </div>
+        )}
+        
+        {/* Success Display */}
+        {success && (
+          <div className="w-full max-w-4xl mb-4">
+            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+              {success}
+            </div>
+          </div>
+        )}
+        
+        <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div>
+            <h2 className="text-2xl font-semibold mb-4">Your Code</h2>
+            <div className="border rounded-md p-4 bg-gray-50 h-96 overflow-auto">
+              <Editor
+                value={code}
+                onValueChange={(code) => setCode(code)}
+                highlight={(code) => highlight(code, languages.js)}
+                padding={10}
+                style={{
+                  fontFamily: '"Fira code", "Fira Mono", monospace',
+                  fontSize: 12,
+                }}
+              />
+            </div>
+            <button
+              onClick={handleGenerateTest}
+              disabled={isLoading}
+              className={`mt-4 w-full font-bold py-2 px-4 rounded ${
+                isLoading 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-blue-500 hover:bg-blue-700'
+              } text-white`}
+            >
+              {isLoading ? 'Generating...' : 'Generate Test'}
+            </button>
+            {test && (
+              <button
+                onClick={handleExportTest}
+                className="mt-2 w-full bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+              >
+                Export Test File
+              </button>
+            )}
+            {test && (
+              <button
+                onClick={handleCopyToClipboard}
+                className="mt-2 w-full bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
+              >
+                Copy to Clipboard
+              </button>
+            )}
+          </div>
+          <div>
+            <h2 className="text-2xl font-semibold mb-4">Generated Test ({framework})</h2>
+            <div className="border rounded-md p-4 bg-gray-800 text-white h-96 overflow-auto">
+              <Editor
+                value={test}
+                onValueChange={() => {}} // Read-only
+                highlight={(code) => highlight(code, languages.js)}
+                padding={10}
+                style={{
+                  fontFamily: '"Fira code", "Fira Mono", monospace',
+                  fontSize: 12,
+                  backgroundColor: 'transparent',
+                  color: 'white',
+                }}
+                readOnly
+              />
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }
