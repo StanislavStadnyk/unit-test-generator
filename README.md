@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Unit Test Generator
 
-## Getting Started
+A modern web app to automatically generate unit tests for your JavaScript and TypeScript functions. Powered by Next.js, React, Babel, and PrismJS, this tool helps you quickly create comprehensive test suites for your code, supporting multiple test frameworks (Jest, Mocha + Chai, Vitest).
 
-First, run the development server:
+---
 
+## 🚀 Features
+
+- **Automatic Function Parsing**: Detects and parses multiple functions in your code using Babel AST.
+- **Smart Test Generation**: Creates meaningful test cases, including edge cases (null, undefined, empty, error cases).
+- **Framework Support**: Generate tests for Jest, Mocha + Chai, or Vitest.
+- **Multiple Function Support**: Select which function to generate tests for if your code contains more than one.
+- **Syntax Highlighting**: Beautiful code editing and test output with PrismJS.
+- **Export & Copy**: Download generated tests as files or copy them to your clipboard.
+- **Responsive UI**: Built with Tailwind CSS for a clean, modern look.
+- **Error Handling**: Helpful error messages and validation throughout the app.
+
+---
+
+## 🖥️ Getting Started
+
+### 1. **Clone the repository**
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/StanislavStadnyk/unit-test-generator.git
+cd unit-test-generator
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. **Install dependencies**
+```bash
+npm install
+# or
+yarn install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. **Run the development server**
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The app will start on [http://localhost:3000](http://localhost:3000) (or the next available port).
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## ✨ Usage
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. **Paste or write your function(s)** in the code editor.
+2. **Select the test framework** (Jest, Mocha + Chai, Vitest).
+3. If you have multiple functions, **choose which one to generate tests for**.
+4. Click **Generate Test**.
+5. **Copy** the generated test or **export** it as a file.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 🛠️ Tech Stack
+- [Next.js](https://nextjs.org/)
+- [React](https://react.dev/)
+- [Babel Parser & Traverse](https://babeljs.io/docs/babel-parser)
+- [PrismJS](https://prismjs.com/)
+- [Tailwind CSS](https://tailwindcss.com/)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🤝 Contributing
+
+Contributions are welcome! Please open issues or pull requests for improvements, bug fixes, or new features.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License.
