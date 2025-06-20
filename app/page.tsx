@@ -1,12 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import Editor from "react-simple-code-editor";
-import { highlight, languages } from "prismjs/components/prism-core";
-import "prismjs/components/prism-clike";
-import "prismjs/components/prism-javascript";
-import "prismjs/components/prism-typescript";
-import "prismjs/themes/prism.css";
 import Link from "next/link";
 
 interface FunctionInfo {
@@ -23,16 +17,20 @@ const parseFunctions = async (code: string): Promise<FunctionInfo[]> => {
   try {
     const functions: FunctionInfo[] = [];
     
-    // Function declarations
-    const functionDeclarations = code.match(/function\s+([a-zA-Z0-9_]+)\s*\([^)]*\)\s*{/g);
+    // Function declarations (including TypeScript)
+    const functionDeclarations = code.match(/(?:export\s+)?function\s+([a-zA-Z0-9_]+)\s*\([^)]*\)\s*(?::\s*[^{]*)?\s*{/g);
     if (functionDeclarations) {
       functionDeclarations.forEach(match => {
-        const nameMatch = match.match(/function\s+([a-zA-Z0-9_]+)\s*\(/);
-        const paramsMatch = match.match(/function\s+[a-zA-Z0-9_]+\s*\(([^)]*)\)/);
+        const nameMatch = match.match(/(?:export\s+)?function\s+([a-zA-Z0-9_]+)\s*\(/);
+        const paramsMatch = match.match(/(?:export\s+)?function\s+[a-zA-Z0-9_]+\s*\(([^)]*)\)/);
         const isAsync = match.includes('async function');
         
         if (nameMatch) {
-          const params = paramsMatch ? paramsMatch[1].split(',').map(p => p.trim()).filter(p => p) : [];
+          const params = paramsMatch ? 
+            paramsMatch[1].split(',').map(p => p.trim()).filter(p => p).map(p => {
+              // Extract parameter name from TypeScript type annotations
+              return p.split(':')[0].trim();
+            }) : [];
           functions.push({
             name: nameMatch[1],
             params,
@@ -42,17 +40,20 @@ const parseFunctions = async (code: string): Promise<FunctionInfo[]> => {
       });
     }
     
-    // Arrow functions and function expressions
-    const arrowFunctions = code.match(/(?:const|let|var)\s+([a-zA-Z0-9_]+)\s*=\s*(?:async\s*)?(?:\([^)]*\)\s*=>|function\s*\([^)]*\))/g);
+    // Arrow functions and function expressions (including TypeScript)
+    const arrowFunctions = code.match(/(?:export\s+)?(?:const|let|var)\s+([a-zA-Z0-9_]+)\s*=\s*(?:async\s*)?(?:\([^)]*\)\s*=>|function\s*\([^)]*\))/g);
     if (arrowFunctions) {
       arrowFunctions.forEach(match => {
-        const nameMatch = match.match(/(?:const|let|var)\s+([a-zA-Z0-9_]+)\s*=/);
+        const nameMatch = match.match(/(?:export\s+)?(?:const|let|var)\s+([a-zA-Z0-9_]+)\s*=/);
         const paramsMatch = match.match(/(?:\(([^)]*)\)\s*=>|function\s*\(([^)]*)\))/);
         const isAsync = match.includes('async');
         
         if (nameMatch) {
           const params = paramsMatch ? 
-            (paramsMatch[1] || paramsMatch[2] || '').split(',').map(p => p.trim()).filter(p => p) : [];
+            (paramsMatch[1] || paramsMatch[2] || '').split(',').map(p => p.trim()).filter(p => p).map(p => {
+              // Extract parameter name from TypeScript type annotations
+              return p.split(':')[0].trim();
+            }) : [];
           functions.push({
             name: nameMatch[1],
             params,
@@ -67,161 +68,6 @@ const parseFunctions = async (code: string): Promise<FunctionInfo[]> => {
     console.error("Error parsing functions:", error);
     return [];
   }
-};
-
-// Enhanced test generation with better test cases
-const generateTest = async (code: string, framework: TestFramework = 'jest', selectedFunction?: string): Promise<string> => {
-  const functions = await parseFunctions(code);
-  
-  if (functions.length === 0) {
-    return "Could not parse any functions. Please check your syntax.";
-  }
-
-  // If no specific function is selected, use the first one
-  const functionInfo = selectedFunction 
-    ? functions.find(f => f.name === selectedFunction) 
-    : functions[0];
-
-  if (!functionInfo) {
-    return `Function "${selectedFunction}" not found. Available functions: ${functions.map(f => f.name).join(', ')}`;
-  }
-
-  const { name, params, isAsync } = functionInfo;
-  
-  // Generate meaningful test cases based on parameter count
-  const testCases = generateTestCases(params);
-  
-  const testCasesCode = testCases.map(tc => {
-    if (tc.setup) {
-      // Error case
-      return `  it('${tc.description}', () => {
-    ${tc.setup}${name}(${tc.args.join(', ')}))${tc.expected};
-  });`;
-    } else {
-      // Normal case
-      return `  it('${tc.description}', ${isAsync ? 'async ' : ''}() => {
-    ${tc.setup || ''}
-    ${isAsync ? 'const result = await ' : 'const result = '}${name}(${tc.args.join(', ')});
-    expect(result).toBe(${tc.expected});
-  });`;
-    }
-  }).join('\n\n');
-
-  const frameworkSetup = getFrameworkSetup(framework);
-  
-  return `${frameworkSetup}
-
-describe('${name}', () => {
-${testCasesCode}
-});`;
-};
-
-// Get framework-specific setup code
-const getFrameworkSetup = (framework: TestFramework): string => {
-  switch (framework) {
-    case 'jest':
-      return "// Jest test file";
-    case 'mocha':
-      return "const { expect } = require('chai');\n// Mocha test file";
-    case 'vitest':
-      return "import { describe, it, expect } from 'vitest';\n// Vitest test file";
-    default:
-      return "// Test file";
-  }
-};
-
-// Generate meaningful test cases
-const generateTestCases = (params: string[]): Array<{
-  description: string;
-  args: string[];
-  expected: string;
-  setup?: string;
-}> => {
-  const testCases = [];
-  
-  if (params.length === 0) {
-    testCases.push({
-      description: 'should work with no parameters',
-      args: [],
-      expected: 'expected result',
-    });
-  } else if (params.length === 1) {
-    const param = params[0];
-    testCases.push(
-      {
-        description: `should handle valid ${param}`,
-        args: [`"test"`],
-        expected: '"expected result"',
-      },
-      {
-        description: `should handle empty ${param}`,
-        args: [`""`],
-        expected: '"expected result"',
-      },
-      {
-        description: `should handle null ${param}`,
-        args: ['null'],
-        expected: 'null',
-      },
-      {
-        description: `should handle undefined ${param}`,
-        args: ['undefined'],
-        expected: 'undefined',
-      }
-    );
-  } else if (params.length === 2) {
-    const [param1, param2] = params;
-    testCases.push(
-      {
-        description: `should work with valid ${param1} and ${param2}`,
-        args: [`"value1"`, `"value2"`],
-        expected: '"expected result"',
-      },
-      {
-        description: `should handle edge case with empty ${param1}`,
-        args: [`""`, `"value2"`],
-        expected: '"expected result"',
-      },
-      {
-        description: `should handle edge case with empty ${param2}`,
-        args: [`"value1"`, `""`],
-        expected: '"expected result"',
-      },
-      {
-        description: `should handle both empty parameters`,
-        args: [`""`, `""`],
-        expected: '"expected result"',
-      }
-    );
-  } else {
-    // For functions with many parameters, create a basic test
-    const args = params.map((param, index) => `"value${index + 1}"`);
-    testCases.push({
-      description: 'should work with valid parameters',
-      args,
-      expected: '"expected result"',
-    });
-    
-    // Add edge case with first parameter empty
-    const edgeArgs = [`""`, ...params.slice(1).map((param, index) => `"value${index + 2}"`)];
-    testCases.push({
-      description: 'should handle edge case with first parameter empty',
-      args: edgeArgs,
-      expected: '"expected result"',
-    });
-  }
-  
-  // Add error case if function has parameters
-  if (params.length > 0) {
-    testCases.push({
-      description: 'should throw error with invalid input',
-      args: params.map(() => 'null'),
-      expected: 'toThrow()',
-      setup: 'expect(() => ',
-    });
-  }
-  
-  return testCases;
 };
 
 export default function Home() {
@@ -269,12 +115,28 @@ async function fetchUser(id) {
     }
 
     try {
-      // Simulate a small delay for better UX
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const generatedTest = await generateTest(code, framework, selectedFunctionName);
-      setTest(generatedTest);
-      setSuccess("Test generated successfully!");
-      setTimeout(() => setSuccess(""), 3000);
+      // Use AI-powered API for test generation
+      const response = await fetch('/api/generate-test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          code,
+          framework,
+          selectedFunction: selectedFunctionName,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        setError(data.error);
+      } else {
+        setTest(data.test);
+        setSuccess(`Test generated successfully with ${data.testCases} test cases!`);
+        setTimeout(() => setSuccess(""), 3000);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred while generating the test.");
     } finally {
@@ -283,196 +145,199 @@ async function fetchUser(id) {
   };
 
   const handleExportTest = async () => {
-    if (!test) {
-      setError('Please generate a test first');
-      return;
-    }
-
-    try {
-      const functions = await parseFunctions(code);
-      const selectedFunction = functions.find(f => f.name === selectedFunctionName);
-      const fileName = selectedFunction ? `${selectedFunction.name}.test.js` : 'test.js';
-      
-      const blob = new Blob([test], { type: 'text/javascript' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      setError("Failed to export test file. Please try again.");
-      console.error("Export error:", err);
-    }
+    if (!test) return;
+    
+    const blob = new Blob([test], { type: 'text/javascript' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${selectedFunctionName || 'test'}.test.js`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const handleCopyToClipboard = async () => {
-    if (!test) {
-      setError('Please generate a test first');
-      return;
-    }
-
+    if (!test) return;
+    
     try {
       await navigator.clipboard.writeText(test);
-      // Show success message temporarily
-      const originalError = error;
-      setError("Test copied to clipboard!");
-      setTimeout(() => setError(originalError), 2000);
-    } catch (err) {
-      setError("Failed to copy to clipboard. Please try again.");
-      console.error("Copy error:", err);
+      setSuccess("Test copied to clipboard!");
+      setTimeout(() => setSuccess(""), 2000);
+    } catch {
+      setError("Failed to copy to clipboard");
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">Unit Test Generator</h1>
+      {/* Navigation */}
+      <nav className="bg-white shadow-sm border-b">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-8">
+              <h1 className="text-xl font-bold text-gray-900">Unit Test Generator</h1>
+              <div className="hidden md:flex space-x-6">
+                <Link href="/" className="text-blue-600 hover:text-blue-700 font-medium">
+                  Home
+                </Link>
+                <Link href="/documentation" className="text-gray-600 hover:text-gray-700">
+                  Documentation
+                </Link>
+              </div>
             </div>
-            <nav className="flex space-x-8">
-              <Link href="/" className="text-blue-600 font-medium">
-                Home
+            <div className="md:hidden">
+              <Link href="/documentation" className="text-blue-600 hover:text-blue-700 font-medium">
+                Docs
               </Link>
-              <Link href="/documentation" className="text-gray-500 hover:text-gray-900 transition-colors">
-                Documentation
-              </Link>
-            </nav>
+            </div>
           </div>
         </div>
-      </header>
+      </nav>
 
-      <main className="flex min-h-screen flex-col items-center p-24">
-        <h1 className="text-4xl font-bold mb-8">Unit Test Generator</h1>
-        
-        {/* Test Framework Selection */}
-        <div className="w-full max-w-4xl mb-6">
-          <div className="flex items-center gap-4">
-            <label className="text-lg font-semibold">Test Framework:</label>
-            <select 
-              value={framework} 
-              onChange={(e) => setFramework(e.target.value as TestFramework)}
-              className="px-4 py-2 border rounded-md bg-white"
-            >
-              <option value="jest">Jest</option>
-              <option value="mocha">Mocha + Chai</option>
-              <option value="vitest">Vitest</option>
-            </select>
-          </div>
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            Unit Test Generator
+          </h1>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Generate comprehensive unit tests for your JavaScript and TypeScript functions with AI-powered analysis
+          </p>
         </div>
-        
-        {/* Function Selection */}
-        {(() => {
-          if (functions.length > 1) {
-            return (
-              <div className="w-full max-w-4xl mb-6">
-                <div className="flex items-center gap-4">
-                  <label className="text-lg font-semibold">Select Function:</label>
-                  <select 
-                    value={selectedFunctionName || ''} 
+
+        {/* Main Content */}
+        <div className="grid lg:grid-cols-2 gap-6 mb-8">
+          {/* Input Section */}
+          <div className="space-y-4">
+            <div className="bg-white rounded-lg shadow-sm border p-4 md:p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Input Code</h2>
+              
+              {/* Framework Selection */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Test Framework
+                </label>
+                <select
+                  value={framework}
+                  onChange={(e) => setFramework(e.target.value as TestFramework)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="jest">Jest</option>
+                  <option value="mocha">Mocha + Chai</option>
+                  <option value="vitest">Vitest</option>
+                </select>
+              </div>
+
+              {/* Function Selection */}
+              {functions.length > 1 && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Function
+                  </label>
+                  <select
+                    value={selectedFunctionName || ""}
                     onChange={(e) => setSelectedFunctionName(e.target.value || undefined)}
-                    className="px-4 py-2 border rounded-md bg-white"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    <option value="">Auto-select first function</option>
-                    {functions.map(func => (
+                    <option value="">All functions</option>
+                    {functions.map((func) => (
                       <option key={func.name} value={func.name}>
-                        {func.name} ({func.params.length} params{func.isAsync ? ', async' : ''})
+                        {func.name}({func.params.join(", ")})
                       </option>
                     ))}
                   </select>
                 </div>
+              )}
+
+              {/* Code Editor */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Your Code
+                </label>
+                <div className="relative">
+                  <textarea
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    className="w-full h-64 md:h-80 px-3 py-2 border border-gray-300 rounded-md font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    placeholder="Paste your JavaScript or TypeScript function here..."
+                  />
+                </div>
               </div>
-            );
-          }
-          return null;
-        })()}
-        
-        {/* Error Display */}
-        {error && (
-          <div className="w-full max-w-4xl mb-4">
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          </div>
-        )}
-        
-        {/* Success Display */}
-        {success && (
-          <div className="w-full max-w-4xl mb-4">
-            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-              {success}
-            </div>
-          </div>
-        )}
-        
-        <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div>
-            <h2 className="text-2xl font-semibold mb-4">Your Code</h2>
-            <div className="border rounded-md p-4 bg-gray-50 h-96 overflow-auto">
-              <Editor
-                value={code}
-                onValueChange={(code) => setCode(code)}
-                highlight={(code) => highlight(code, languages.js)}
-                padding={10}
-                style={{
-                  fontFamily: '"Fira code", "Fira Mono", monospace',
-                  fontSize: 12,
-                }}
-              />
-            </div>
-            <button
-              onClick={handleGenerateTest}
-              disabled={isLoading}
-              className={`mt-4 w-full font-bold py-2 px-4 rounded ${
-                isLoading 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-blue-500 hover:bg-blue-700'
-              } text-white`}
-            >
-              {isLoading ? 'Generating...' : 'Generate Test'}
-            </button>
-            {test && (
+
+              {/* Generate Button */}
               <button
-                onClick={handleExportTest}
-                className="mt-2 w-full bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+                onClick={handleGenerateTest}
+                disabled={isLoading}
+                className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               >
-                Export Test File
+                {isLoading ? "Generating..." : "Generate Test"}
               </button>
-            )}
-            {test && (
-              <button
-                onClick={handleCopyToClipboard}
-                className="mt-2 w-full bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
-              >
-                Copy to Clipboard
-              </button>
-            )}
+            </div>
           </div>
-          <div>
-            <h2 className="text-2xl font-semibold mb-4">Generated Test ({framework})</h2>
-            <div className="border rounded-md p-4 bg-gray-800 text-white h-96 overflow-auto">
-              <Editor
-                value={test}
-                onValueChange={() => {}} // Read-only
-                highlight={(code) => highlight(code, languages.js)}
-                padding={10}
-                style={{
-                  fontFamily: '"Fira code", "Fira Mono", monospace',
-                  fontSize: 12,
-                  backgroundColor: 'transparent',
-                  color: 'white',
-                }}
-                readOnly
-              />
+
+          {/* Output Section */}
+          <div className="space-y-4">
+            <div className="bg-white rounded-lg shadow-sm border p-4 md:p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-gray-900">Generated Test</h2>
+                {test && (
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={handleCopyToClipboard}
+                      className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                    >
+                      Copy
+                    </button>
+                    <button
+                      onClick={handleExportTest}
+                      className="px-3 py-1 text-sm bg-green-100 text-green-700 rounded hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    >
+                      Export
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Test Output */}
+              <div className="relative">
+                <pre className="w-full h-64 md:h-80 p-3 bg-gray-50 border border-gray-200 rounded-md font-mono text-xs md:text-sm overflow-auto whitespace-pre-wrap">
+                  <code className="language-javascript">
+                    {test || "Generated test will appear here..."}
+                  </code>
+                </pre>
+              </div>
             </div>
           </div>
         </div>
-      </main>
+
+        {/* Messages */}
+        {(error || success) && (
+          <div className="mb-6">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md">
+                {success}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="text-center text-gray-500 text-sm">
+          <p>
+            Built with Next.js and AI-powered test generation. 
+            <Link href="/documentation" className="text-blue-600 hover:text-blue-700 ml-1">
+              View Documentation
+            </Link>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
