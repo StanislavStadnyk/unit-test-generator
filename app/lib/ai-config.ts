@@ -72,17 +72,22 @@ Code:
 ${functionInfo.code}
 
 Generate test cases that include:
-1. Normal usage with valid inputs
-2. Edge cases (empty strings, null, undefined)
-3. Error cases for invalid inputs
-4. Type-specific test cases based on parameter names
+1. Normal usage with valid inputs and REALISTIC expected values (not "expected result")
+2. Edge cases (empty strings, null, undefined) with proper error handling
+3. Error cases using expect(() => function()).toThrow() for null/undefined inputs
+4. Type-specific test cases based on parameter names and function behavior
+5. Boolean functions should return true/false, not "expected result"
+6. Math functions should return actual calculated values
+7. String functions should return realistic string outputs
+
+IMPORTANT: Replace placeholder values with actual expected results based on function logic.
 
 Return the test cases as a JSON array with this structure:
 [
   {
     "description": "test description",
     "args": ["arg1", "arg2"],
-    "expected": "expected result",
+    "expected": "actual expected result",
     "setup": "optional setup code"
   }
 ]`,
@@ -97,17 +102,22 @@ Function Details:
 ${functionInfo.code}
 
 Please generate test cases that cover:
-1. Happy path scenarios with valid inputs
-2. Edge cases (empty strings, null, undefined, boundary values)
-3. Error scenarios for invalid inputs
+1. Happy path scenarios with valid inputs and REALISTIC expected values
+2. Edge cases (empty strings, null, undefined) with proper error handling
+3. Error scenarios using expect(() => function()).toThrow() for invalid inputs
 4. Type-specific test cases based on parameter names and expected behavior
+5. Boolean functions should return true/false, not placeholder values
+6. Math functions should return actual calculated results
+7. String functions should return realistic string outputs
+
+CRITICAL: Analyze the function logic and provide actual expected values, not "expected result" placeholders.
 
 Format your response as a JSON array with the following structure:
 [
   {
     "description": "clear test description",
     "args": ["argument1", "argument2"],
-    "expected": "expected result or assertion",
+    "expected": "actual expected result based on function logic",
     "setup": "optional setup code if needed"
   }
 ]
@@ -123,17 +133,22 @@ Code:
 ${functionInfo.code}
 
 Create comprehensive test cases covering:
-- Normal operation with valid inputs
-- Edge cases and boundary conditions
-- Error handling for invalid inputs
+- Normal operation with valid inputs and REALISTIC expected values
+- Edge cases and boundary conditions with proper error handling
+- Error handling for invalid inputs using expect(() => function()).toThrow()
 - Type-specific scenarios based on parameter names
+- Boolean functions should return true/false
+- Math functions should return calculated values
+- String functions should return realistic outputs
+
+IMPORTANT: Provide actual expected values based on function logic, not "expected result" placeholders.
 
 Return as JSON array:
 [
   {
     "description": "test description",
     "args": ["arg1", "arg2"],
-    "expected": "expected result",
+    "expected": "actual expected result",
     "setup": "optional setup"
   }
 ]`,
@@ -147,17 +162,22 @@ Code:
 ${functionInfo.code}
 
 Create test cases for:
-1. Valid inputs
-2. Edge cases
-3. Error conditions
-4. Type-specific scenarios
+1. Valid inputs with REALISTIC expected values
+2. Edge cases with proper error handling
+3. Error conditions using expect(() => function()).toThrow()
+4. Type-specific scenarios based on function behavior
+5. Boolean functions should return true/false
+6. Math functions should return calculated results
+7. String functions should return realistic outputs
+
+CRITICAL: Analyze function logic and provide actual expected values, not placeholders.
 
 Return JSON:
 [
   {
     "description": "test description",
     "args": ["arg1", "arg2"],
-    "expected": "expected result",
+    "expected": "actual expected result",
     "setup": "optional setup"
   }
 ]`,

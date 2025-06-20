@@ -278,23 +278,30 @@ async function generateAITestCases(functionInfo: FunctionInfo, framework: string
 
 // Mock AI test cases (fallback)
 function generateMockAITestCases(functionInfo: FunctionInfo): TestCase[] {
-  const { params } = functionInfo;
+  const { params, name } = functionInfo;
   
   // Analyze function name and parameters for intelligent test generation
   const testCases: TestCase[] = [];
+  
+  // Analyze function name to determine expected behavior
+  const functionName = name.toLowerCase();
+  const isBooleanFunction = functionName.includes('is') || functionName.includes('has') || functionName.includes('can') || functionName.includes('should');
+  const isPalindromeFunction = functionName.includes('palindrome');
+  const isGreetingFunction = functionName.includes('greet') || functionName.includes('hello');
+  const isMathFunction = functionName.includes('add') || functionName.includes('sum') || functionName.includes('multiply') || functionName.includes('divide');
   
   // Basic test cases
   if (params.length === 0) {
     testCases.push({
       description: 'should work with no parameters',
       args: [],
-      expected: 'expected result',
+      expected: isBooleanFunction ? 'true' : 'expected result',
     });
   } else if (params.length === 1) {
     const param = params[0];
     
     // Analyze parameter name for better test cases
-    if (param.toLowerCase().includes('name')) {
+    if (param.toLowerCase().includes('name') || isGreetingFunction) {
       testCases.push(
         {
           description: `should handle valid ${param}`,
@@ -312,7 +319,7 @@ function generateMockAITestCases(functionInfo: FunctionInfo): TestCase[] {
           expected: '"Hello, John@Doe!!"',
         }
       );
-    } else if (param.toLowerCase().includes('number') || param.toLowerCase().includes('num')) {
+    } else if (param.toLowerCase().includes('number') || param.toLowerCase().includes('num') || isMathFunction) {
       testCases.push(
         {
           description: `should handle positive ${param}`,
@@ -330,23 +337,59 @@ function generateMockAITestCases(functionInfo: FunctionInfo): TestCase[] {
           expected: '-5',
         }
       );
+    } else if (isPalindromeFunction) {
+      testCases.push(
+        {
+          description: `should return true for a valid palindrome`,
+          args: [`"racecar"`],
+          expected: 'true',
+        },
+        {
+          description: `should return false for a non-palindrome`,
+          args: [`"hello"`],
+          expected: 'false',
+        },
+        {
+          description: `should return true for an empty string`,
+          args: [`""`],
+          expected: 'true',
+        },
+        {
+          description: `should return true for a single character`,
+          args: [`"a"`],
+          expected: 'true',
+        }
+      );
+    } else if (isBooleanFunction) {
+      testCases.push(
+        {
+          description: `should return true for valid input`,
+          args: [`"valid"`],
+          expected: 'true',
+        },
+        {
+          description: `should return false for invalid input`,
+          args: [`"invalid"`],
+          expected: 'false',
+        },
+        {
+          description: `should return false for empty input`,
+          args: [`""`],
+          expected: 'false',
+        }
+      );
     } else {
-      // Generic test cases
+      // Generic test cases with more realistic expected values
       testCases.push(
         {
           description: `should handle valid ${param}`,
           args: [`"test"`],
-          expected: '"expected result"',
+          expected: '"processed test"',
         },
         {
           description: `should handle empty ${param}`,
           args: [`""`],
-          expected: '"expected result"',
-        },
-        {
-          description: `should handle null ${param}`,
-          args: ['null'],
-          expected: 'null',
+          expected: '""',
         }
       );
     }
@@ -354,7 +397,7 @@ function generateMockAITestCases(functionInfo: FunctionInfo): TestCase[] {
     const [param1, param2] = params;
     
     // Analyze parameter combinations
-    if (param1.toLowerCase().includes('a') && param2.toLowerCase().includes('b')) {
+    if (param1.toLowerCase().includes('a') && param2.toLowerCase().includes('b') || isMathFunction) {
       testCases.push(
         {
           description: `should add ${param1} and ${param2}`,
@@ -377,25 +420,44 @@ function generateMockAITestCases(functionInfo: FunctionInfo): TestCase[] {
         {
           description: `should work with valid ${param1} and ${param2}`,
           args: [`"value1"`, `"value2"`],
-          expected: '"expected result"',
+          expected: '"combined value1 and value2"',
         },
         {
           description: `should handle edge case with empty ${param1}`,
           args: [`""`, `"value2"`],
-          expected: '"expected result"',
+          expected: '"value2"',
         }
       );
     }
   }
   
-  // Error cases
+  // Error cases with proper error handling
   if (params.length > 0) {
-    testCases.push({
-      description: 'should throw error with invalid input',
-      args: params.map(() => 'undefined'),
-      expected: '.toThrow()',
-      setup: 'expect(() => ',
-    });
+    // Add null/undefined error cases with proper expect(() => ...).toThrow() syntax
+    testCases.push(
+      {
+        description: 'should throw error for null input',
+        args: params.map(() => 'null'),
+        expected: '.toThrow()',
+        setup: 'expect(() => ',
+      },
+      {
+        description: 'should throw error for undefined input',
+        args: params.map(() => 'undefined'),
+        expected: '.toThrow()',
+        setup: 'expect(() => ',
+      }
+    );
+    
+    // Add type-specific error cases
+    if (params.some(p => p.toLowerCase().includes('number') || p.toLowerCase().includes('num'))) {
+      testCases.push({
+        description: 'should throw error for non-numeric input',
+        args: params.map(() => '"not a number"'),
+        expected: '.toThrow()',
+        setup: 'expect(() => ',
+      });
+    }
   }
   
   return testCases;

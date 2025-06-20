@@ -76,31 +76,39 @@ For detailed setup instructions, see the [AI Setup Guide](docs/AI_SETUP.md).
 
 Input:
 ```javascript
-function greet(name) {
-  return `Hello, ${name}!`;
+function isPalindrome(str) {
+  if (typeof str !== 'string') {
+    throw new Error('Input must be a string');
+  }
+  const cleaned = str.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return cleaned === cleaned.split('').reverse().join('');
 }
 ```
 
 AI-generated output:
 ```javascript
-describe('greet', () => {
-  it('should handle valid name', () => {
-    const result = greet("John Doe");
-    expect(result).toBe("Hello, John Doe!");
+describe('isPalindrome', () => {
+  it('should return true for a valid palindrome', () => {
+    const result = isPalindrome('racecar');
+    expect(result).toBe(true);
   });
 
-  it('should handle empty name', () => {
-    const result = greet("");
-    expect(result).toBe("Hello, !");
+  it('should return false for a non-palindrome', () => {
+    const result = isPalindrome('hello');
+    expect(result).toBe(false);
   });
 
-  it('should handle special characters in name', () => {
-    const result = greet("John@Doe!");
-    expect(result).toBe("Hello, John@Doe!!");
+  it('should return true for an empty string', () => {
+    const result = isPalindrome('');
+    expect(result).toBe(true);
   });
 
-  it('should throw error with invalid input', () => {
-    expect(() => greet(undefined)).toThrow();
+  it('should throw error for null input', () => {
+    expect(() => isPalindrome(null)).toThrow('Input must be a string');
+  });
+
+  it('should throw error for undefined input', () => {
+    expect(() => isPalindrome(undefined)).toThrow('Input must be a string');
   });
 });
 ```
